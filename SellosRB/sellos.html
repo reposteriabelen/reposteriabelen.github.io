@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Repostería Belén - Sellos</title>
 <link rel="icon" type="image/png" href="assets/img/rol.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#fff3f6;
@@ -146,11 +149,58 @@
     #scroll-hint, #scroll-hint::after, #scroll-hint .scroll-hint-arrow, .sh-sparkle{animation:none;}
     .sh-sparkle{opacity:.9;}
   }
+  /* Título "Nuestro catálogo" en cursiva con degradado y adornos */
+  #catalogo-heading{
+    font-family:"Dancing Script","Brush Script MT","Segoe Script",cursive;
+    font-size:clamp(2.1rem, 9vw, 2.7rem);
+    font-weight:700;line-height:1.15;letter-spacing:.5px;
+    display:flex;align-items:center;justify-content:center;gap:12px;
+    margin-bottom:14px;
+  }
+  #catalogo-heading .cat-title{
+    background:linear-gradient(120deg, var(--primary-dark) 0%, #f08fae 50%, var(--primary-dark) 100%);
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;
+    filter:drop-shadow(0 2px 3px rgba(216,103,138,.25));
+    padding:0 2px 4px;
+  }
+  #catalogo-heading::before,
+  #catalogo-heading::after{
+    content:"✦";
+    flex:0 0 auto;font-family:inherit;font-size:.5em;
+    color:var(--primary);opacity:.85;
+  }
   .qr-box{text-align:center;margin-top:18px;}
   .qr-box img{border-radius:12px;border:1px solid var(--border);padding:10px;background:#fff;animation:popIn .4s ease;}
   .qr-id{font-family:monospace;font-size:.85rem;color:var(--muted);margin-top:8px;word-break:break-all;}
   .stamp-header{text-align:center;margin-bottom:18px;}
-  .stamp-header .name{font-size:1.1rem;font-weight:700;animation:fade .4s ease;}
+  /* Saludo "Hola, Nombre" en cursiva con degradado */
+  .stamp-header .name{
+    font-family:"Dancing Script","Brush Script MT","Segoe Script",cursive;
+    font-size:clamp(1.9rem, 8vw, 2.4rem);font-weight:700;line-height:1.2;
+    color:var(--text);animation:fade .4s ease;
+  }
+  .stamp-header .name .hola-saludo{color:var(--muted);font-weight:600;}
+  .stamp-header .name .hola-nombre{
+    display:inline-block;padding:0 3px 4px;
+    background:linear-gradient(120deg, var(--primary-dark) 0%, #f08fae 50%, var(--primary-dark) 100%);
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;
+    filter:drop-shadow(0 2px 3px rgba(216,103,138,.25));
+  }
+  .stamp-header .name .hola-mano{
+    display:inline-block;font-size:.8em;transform-origin:70% 75%;
+    animation:holaWave 2.4s ease-in-out infinite;
+  }
+  @keyframes holaWave{
+    0%,60%,100%{transform:rotate(0deg);}
+    10%,30%{transform:rotate(16deg);}
+    20%,40%{transform:rotate(-10deg);}
+    50%{transform:rotate(8deg);}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .stamp-header .name .hola-mano{animation:none;}
+  }
   .stamp-count{font-size:2.4rem;font-weight:800;color:var(--primary);text-align:center;margin:6px 0 2px;animation:popIn .35s ease;}
   .stamp-label{text-align:center;color:var(--muted);font-size:.85rem;margin-bottom:16px;}
   .stamps-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:10px 0 4px;}
@@ -534,6 +584,17 @@ function renderAuth(){
   `;
 }
 
+// Si el nombre viene todo en MAYÚSCULAS o todo en minúsculas, lo muestra como
+// "Eduardo" (solo la primera letra de cada palabra en mayúscula). Los nombres
+// ya capitalizados se respetan tal cual. No modifica lo guardado en la hoja.
+function formatNombre(nombre){
+  const n = String(nombre || "").trim();
+  if(n && (n === n.toUpperCase() || n === n.toLowerCase())){
+    return n.toLowerCase().replace(/(^|\s)(\S)/g, (m, sp, ch) => sp + ch.toUpperCase());
+  }
+  return n;
+}
+
 function renderLoggedIn(cliente){
   const total = 10;
   const sellos = Number(cliente.sellos) || 0;
@@ -545,7 +606,7 @@ function renderLoggedIn(cliente){
   return `
     <h1 class="brand-logo" style="margin-bottom:14px;"><img src="assets/img/RB-Logo.png" alt="Repostería Belén" class="logo-img" onerror="this.style.display='none';"></h1>
     <div class="stamp-header">
-      <div class="name">Hola, ${cliente.nombre} 👋</div>
+      <div class="name"><span class="hola-saludo">Hola,</span> <span class="hola-nombre">${formatNombre(cliente.nombre)}</span> <span class="hola-mano">👋</span></div>
     </div>
     <div class="card">
       <div class="stamp-count" data-sellos="${sellos}">${formatSellos(sellos)}/${total}</div>
@@ -566,7 +627,7 @@ function renderLoggedIn(cliente){
       <span class="scroll-hint-arrow" aria-hidden="true">↓</span>
     </button>
 
-    <h1 id="catalogo-heading" style="margin-top:24px;">Nuestro catálogo</h1>
+    <h1 id="catalogo-heading" style="margin-top:24px;"><span class="cat-title">Nuestro catálogo</span></h1>
     <div class="catalog-grid" id="catalog-list"></div>
 
     <div class="logout"><a id="btn-logout">Cerrar sesión</a></div>
