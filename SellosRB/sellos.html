@@ -74,44 +74,77 @@
   .status{padding:12px 14px;border-radius:12px;font-size:.85rem;margin:12px 0;animation:popIn .3s ease;}
   .status.ok{background:rgba(63,145,66,.12);color:#3f9142;}
 
-  #scroll-hint-wrap{text-align:center;}
+  /* Botón flotante "Ver catálogo": fijo en la esquina inferior derecha.
+     Tamaño y posición se adaptan al ancho/alto de la pantalla. */
   #scroll-hint{
-    position:relative;
-    display:inline-flex;align-items:center;justify-content:center;
-    width:40px;height:40px;padding:0;border-radius:50%;
-    background:var(--primary);color:#fff;border:none;
-    box-shadow:0 4px 10px rgba(216,103,138,.3);cursor:pointer;
-    margin:14px auto 0;
+    --sh-size:clamp(58px, 15vmin, 78px);
+    position:fixed;
+    z-index:40;
+    right:max(16px, calc(50vw - 194px), env(safe-area-inset-right, 0px));
+    bottom:calc(18px + env(safe-area-inset-bottom, 0px));
+    width:var(--sh-size);height:var(--sh-size);
+    margin:0;padding:0;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 30% 25%, #ff9fbb 0%, var(--primary) 45%, var(--primary-dark) 100%);
+    color:#fff;border:3px solid rgba(255,255,255,.85);
+    cursor:pointer;
+    box-shadow:0 6px 18px rgba(216,103,138,.45);
     transition:opacity .35s ease, transform .35s ease;
     animation:scrollHintGlow 2.2s ease-in-out infinite;
   }
   #scroll-hint::after{
     content:"";
-    position:absolute;inset:0;border-radius:50%;
+    position:absolute;inset:-3px;border-radius:50%;
     box-shadow:0 0 0 0 rgba(216,103,138,.55);
     animation:scrollHintPing 2.2s ease-out infinite;
     pointer-events:none;
   }
   #scroll-hint.hidden{
     opacity:0;pointer-events:none;
-    transform:translateY(6px) scale(.95);
+    transform:translateY(10px) scale(.9);
     animation:none;
   }
   #scroll-hint.hidden::after{display:none;}
-  #scroll-hint .scroll-hint-label{display:none;}
-  #scroll-hint .scroll-hint-arrow{font-size:1.15rem;line-height:1;animation:bounceArrow 1.4s ease-in-out infinite;}
+  #scroll-hint.hidden .sh-sparkle{animation:none;}
+  #scroll-hint .scroll-hint-arrow{
+    font-size:calc(var(--sh-size) * .52);line-height:1;font-weight:800;
+    text-shadow:0 2px 4px rgba(92,51,70,.3);
+    animation:bounceArrow 1.4s ease-in-out infinite;
+  }
+  /* Destellos alrededor del botón */
+  .sh-sparkle{
+    position:absolute;pointer-events:none;line-height:1;
+    font-size:calc(var(--sh-size) * .28);
+    color:#ffc933;
+    text-shadow:0 0 6px rgba(255,255,255,.95), 0 0 10px rgba(216,103,138,.7);
+    opacity:0;
+    animation:sparkleTwinkle 2.4s ease-in-out infinite;
+  }
+  .sh-sparkle.s1{top:-14%;right:-8%;animation-delay:0s;}
+  .sh-sparkle.s2{top:12%;left:-16%;font-size:calc(var(--sh-size) * .2);animation-delay:.6s;}
+  .sh-sparkle.s3{bottom:-12%;left:8%;animation-delay:1.2s;}
+  .sh-sparkle.s4{top:-20%;left:38%;font-size:calc(var(--sh-size) * .18);animation-delay:1.8s;}
+  .sh-sparkle.s5{bottom:6%;right:-18%;font-size:calc(var(--sh-size) * .2);animation-delay:.3s;}
+  @keyframes sparkleTwinkle{
+    0%,100%{opacity:0;transform:scale(.3) rotate(0deg);}
+    50%{opacity:1;transform:scale(1.15) rotate(35deg);}
+  }
   @keyframes bounceArrow{
-    0%,100%{transform:translateY(0);}
-    50%{transform:translateY(3px);}
+    0%,100%{transform:translateY(-2px);}
+    50%{transform:translateY(4px);}
   }
   @keyframes scrollHintGlow{
-    0%,100%{box-shadow:0 4px 10px rgba(216,103,138,.3);}
-    50%{box-shadow:0 4px 22px rgba(216,103,138,.75), 0 0 14px rgba(255,194,209,.9);}
+    0%,100%{box-shadow:0 6px 18px rgba(216,103,138,.45);}
+    50%{box-shadow:0 6px 28px rgba(216,103,138,.85), 0 0 22px rgba(255,194,209,1);}
   }
   @keyframes scrollHintPing{
-    0%{box-shadow:0 0 0 0 rgba(216,103,138,.55);opacity:1;}
-    70%{box-shadow:0 0 0 14px rgba(216,103,138,0);opacity:0;}
-    100%{box-shadow:0 0 0 14px rgba(216,103,138,0);opacity:0;}
+    0%{box-shadow:0 0 0 0 rgba(216,103,138,.6);opacity:1;}
+    70%{box-shadow:0 0 0 18px rgba(216,103,138,0);opacity:0;}
+    100%{box-shadow:0 0 0 18px rgba(216,103,138,0);opacity:0;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    #scroll-hint, #scroll-hint::after, #scroll-hint .scroll-hint-arrow, .sh-sparkle{animation:none;}
+    .sh-sparkle{opacity:.9;}
   }
   .qr-box{text-align:center;margin-top:18px;}
   .qr-box img{border-radius:12px;border:1px solid var(--border);padding:10px;background:#fff;animation:popIn .4s ease;}
@@ -320,7 +353,7 @@ function render(){
   attachHandlers();
 }
 
-// Botón inline debajo del QR que lleva al catálogo con scroll suave.
+// Botón flotante (esquina inferior derecha) que lleva al catálogo con scroll suave.
 // Se desvanece únicamente cuando el usuario lo presiona.
 function ocultarScrollHint(){
   const btn = document.getElementById("scroll-hint");
@@ -524,12 +557,14 @@ function renderLoggedIn(cliente){
         <div class="qr-id">${cliente.id}</div>
       </div>
     </div>
-    <div id="scroll-hint-wrap">
-      <button id="scroll-hint" aria-label="Ver catálogo de productos">
-        <span class="scroll-hint-arrow">⌄</span>
-        <span class="scroll-hint-label">Ver catálogo</span>
-      </button>
-    </div>
+    <button id="scroll-hint" aria-label="Ver catálogo de productos" title="Ver catálogo">
+      <span class="sh-sparkle s1" aria-hidden="true">✦</span>
+      <span class="sh-sparkle s2" aria-hidden="true">✧</span>
+      <span class="sh-sparkle s3" aria-hidden="true">✦</span>
+      <span class="sh-sparkle s4" aria-hidden="true">✧</span>
+      <span class="sh-sparkle s5" aria-hidden="true">✦</span>
+      <span class="scroll-hint-arrow" aria-hidden="true">↓</span>
+    </button>
 
     <h1 id="catalogo-heading" style="margin-top:24px;">Nuestro catálogo</h1>
     <div class="catalog-grid" id="catalog-list"></div>
