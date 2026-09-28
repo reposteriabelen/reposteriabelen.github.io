@@ -592,7 +592,7 @@ function renderAuth(){
     <div class="screen ${state.screen==='registro'?'active':''}" id="screen-registro">
       <div class="card">
         <label>Nombre</label>
-        <input type="text" id="reg-nombre" placeholder="Tu nombre">
+        <input type="text" id="reg-nombre" placeholder="Tu nombre" maxlength="50">
         <label>Número de teléfono</label>
         <input type="tel" id="reg-tel" inputmode="numeric" pattern="[0-9]*" maxlength="10" autocomplete="off" placeholder="10 dígitos">
         <label>Pin (4 dígitos)</label>
