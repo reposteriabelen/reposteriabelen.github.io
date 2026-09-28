@@ -145,10 +145,65 @@
   .historial-item .h-delta.positivo{color:var(--ok);font-weight:700;}
   .historial-item .h-delta.negativo{color:var(--err);font-weight:700;}
   @keyframes popIn{from{opacity:0;transform:scale(.9);}to{opacity:1;transform:scale(1);}}
+
+  /* ---- Pantalla de PIN de administrador ---- */
+  body.locked .app{display:none;}
+  body:not(.locked) #pin-gate{display:none;}
+  .pin-gate{
+    position:fixed;inset:0;z-index:100;background:var(--bg);
+    display:flex;align-items:center;justify-content:center;
+    padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));
+  }
+  .pin-box{
+    width:100%;max-width:360px;background:var(--card);border:1px solid var(--border);
+    border-radius:18px;padding:28px 22px;text-align:center;
+    box-shadow:0 4px 14px rgba(216,103,138,.08);
+  }
+  .pin-box .pin-lock{font-size:2rem;line-height:1;}
+  .pin-box h2{margin:10px 0 4px;font-size:1.15rem;color:var(--primary-dark);}
+  .pin-box p{margin:0 0 18px;font-size:.85rem;color:var(--muted);}
+  .pin-inputs{display:flex;justify-content:center;gap:8px;}
+  .pin-inputs input.pin-digit{
+    flex:1;min-width:0;max-width:48px;height:56px;padding:0;
+    text-align:center;font-size:1.5rem;font-weight:700;
+    border:2px solid var(--border);border-radius:12px;
+    background:var(--bg);color:var(--text);
+  }
+  .pin-inputs input.pin-digit:focus{outline:none;border-color:var(--primary);}
+  .pin-inputs input.pin-digit.filled{border-color:var(--primary);}
+  .pin-inputs.error input.pin-digit{border-color:var(--err);}
+  .pin-inputs.shake{animation:shake .4s ease;}
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    20%,60%{transform:translateX(-7px);}
+    40%,80%{transform:translateX(7px);}
+  }
+  #pin-msg{min-height:20px;margin-top:14px;font-size:.85rem;color:var(--err);font-weight:600;}
+  #pin-msg.info{color:var(--muted);font-weight:500;}
+  #btn-bloquear{margin-top:16px;}
   .note{font-size:.72rem;color:var(--muted);text-align:center;margin-top:14px;}
 </style>
 </head>
-<body>
+<body class="locked">
+
+<div class="pin-gate" id="pin-gate">
+  <div class="pin-box">
+    <div class="pin-lock">🔒</div>
+    <h2>Acceso de administrador</h2>
+    <p>Ingresa tu PIN de 6 dígitos</p>
+    <div class="pin-inputs" id="pin-inputs">
+      <input class="pin-digit" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="Dígito 1">
+      <input class="pin-digit" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="Dígito 2">
+      <input class="pin-digit" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="Dígito 3">
+      <input class="pin-digit" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="Dígito 4">
+      <input class="pin-digit" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="Dígito 5">
+      <input class="pin-digit" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="Dígito 6">
+    </div>
+    <div id="pin-msg" role="alert"></div>
+    <button id="btn-pin-entrar" style="margin-top:14px;">Entrar</button>
+  </div>
+</div>
+
 <div class="app">
   <div class="logo-wrap">
     <img src="assets/img/RB-Logo.png" alt="Repostería Belén">
@@ -188,6 +243,7 @@
   </div>
 
   <div class="note">Cada escaneo o búsqueda suma 1 sello al cliente. En "Clientes" puedes sumar o quitar sellos manualmente.</div>
+  <button id="btn-bloquear" class="secondary">🔒 Bloquear panel</button>
 </div>
 
 <div class="loading-overlay" id="loading-overlay">
@@ -252,11 +308,22 @@ let html5QrCode = null;
 let scanning = false;
 let cooldown = false;
 
+// PIN de administrador validado en esta sesión (se guarda solo en esta pestaña).
+let ADMIN_PIN = null;
+try{ ADMIN_PIN = sessionStorage.getItem("rb_admin_pin"); }catch(e){}
+
 async function apiCall(params){
   const url = new URL(API_URL);
-  Object.keys(params).forEach(k => url.searchParams.append(k, params[k]));
+  const todos = Object.assign({}, params);
+  if(ADMIN_PIN && todos.pin === undefined) todos.pin = ADMIN_PIN;
+  Object.keys(todos).forEach(k => url.searchParams.append(k, todos[k]));
   const res = await fetch(url.toString());
-  return res.json();
+  const data = await res.json();
+  // Si el servidor rechaza el PIN a mitad de la sesión, se vuelve a bloquear el panel.
+  if(data && data.codigo === "PIN" && ADMIN_PIN){
+    bloquearPanel("Tu sesión expiró. Ingresa el PIN de nuevo.");
+  }
+  return data;
 }
 
 // Un cliente puede acumular medios sellos (ej. 3.5). Estos helpers dan un
@@ -660,6 +727,140 @@ async function mostrarHistorial(id){
 document.getElementById("btn-historial-cerrar").onclick = ()=>{
   document.getElementById("historial-overlay").classList.remove("active");
 };
+
+// ---- Acceso con PIN de administrador (6 dígitos, un input por dígito) ----
+const pinInputs = Array.from(document.querySelectorAll("#pin-inputs .pin-digit"));
+const pinContenedor = document.getElementById("pin-inputs");
+const pinMsg = document.getElementById("pin-msg");
+let pinVerificando = false;
+
+function leerPin(){ return pinInputs.map(i => i.value).join(""); }
+
+function mostrarMensajePin(texto, esInfo){
+  pinMsg.textContent = texto || "";
+  pinMsg.classList.toggle("info", !!esInfo);
+}
+
+function limpiarPin(){
+  pinInputs.forEach(i => { i.value = ""; i.classList.remove("filled"); });
+  pinContenedor.classList.remove("error");
+  pinInputs[0].focus();
+}
+
+function setPinDeshabilitado(v){
+  pinInputs.forEach(i => i.disabled = v);
+  document.getElementById("btn-pin-entrar").disabled = v;
+}
+
+async function verificarPin(){
+  if(pinVerificando) return;
+  const pin = leerPin();
+  if(pin.length < 6){
+    mostrarMensajePin("Ingresa los 6 dígitos.");
+    return;
+  }
+  pinVerificando = true;
+  setPinDeshabilitado(true);
+  mostrarMensajePin("Verificando...", true);
+  try{
+    const data = await apiCall({accion:"validar_admin", pin});
+    if(data.ok){
+      ADMIN_PIN = pin;
+      try{ sessionStorage.setItem("rb_admin_pin", pin); }catch(e){}
+      desbloquearPanel();
+    } else {
+      pinContenedor.classList.add("error", "shake");
+      setTimeout(()=> pinContenedor.classList.remove("shake"), 450);
+      mostrarMensajePin(data.error || "PIN incorrecto.");
+      setPinDeshabilitado(false);
+      limpiarPin();
+    }
+  }catch(e){
+    mostrarMensajePin("Error de conexión. Intenta de nuevo.");
+    setPinDeshabilitado(false);
+    pinInputs[pinInputs.length - 1].focus();
+  }
+  pinVerificando = false;
+}
+
+function desbloquearPanel(){
+  document.body.classList.remove("locked");
+  setPinDeshabilitado(false);
+  limpiarPin();
+  mostrarMensajePin("");
+}
+
+function bloquearPanel(mensaje){
+  stopScanner();
+  document.querySelectorAll(".loading-overlay.active").forEach(o => o.classList.remove("active"));
+  ADMIN_PIN = null;
+  try{ sessionStorage.removeItem("rb_admin_pin"); }catch(e){}
+  listaClientes = null;
+  document.getElementById("result-card").style.display = "none";
+  document.body.classList.add("locked");
+  setPinDeshabilitado(false);
+  limpiarPin();
+  mostrarMensajePin(mensaje || "");
+}
+
+pinInputs.forEach((input, idx)=>{
+  input.addEventListener("input", ()=>{
+    const soloDigitos = input.value.replace(/\D/g, "");
+    input.value = soloDigitos.slice(-1);
+    input.classList.toggle("filled", !!input.value);
+    pinContenedor.classList.remove("error");
+    if(input.value){
+      if(idx < pinInputs.length - 1) pinInputs[idx + 1].focus();
+      else if(leerPin().length === 6) verificarPin();
+    }
+  });
+  input.addEventListener("keydown", (e)=>{
+    if(e.key === "Backspace" && !input.value && idx > 0){
+      pinInputs[idx - 1].value = "";
+      pinInputs[idx - 1].classList.remove("filled");
+      pinInputs[idx - 1].focus();
+      e.preventDefault();
+    } else if(e.key === "ArrowLeft" && idx > 0){
+      pinInputs[idx - 1].focus();
+      e.preventDefault();
+    } else if(e.key === "ArrowRight" && idx < pinInputs.length - 1){
+      pinInputs[idx + 1].focus();
+      e.preventDefault();
+    } else if(e.key === "Enter"){
+      verificarPin();
+    }
+  });
+  input.addEventListener("focus", ()=> input.select());
+  input.addEventListener("paste", (e)=>{
+    e.preventDefault();
+    const texto = (e.clipboardData || window.clipboardData).getData("text").replace(/\D/g, "").slice(0, 6);
+    if(!texto) return;
+    texto.split("").forEach((d, i)=>{
+      pinInputs[i].value = d;
+      pinInputs[i].classList.add("filled");
+    });
+    const siguiente = Math.min(texto.length, pinInputs.length - 1);
+    pinInputs[siguiente].focus();
+    if(texto.length === 6) verificarPin();
+  });
+});
+
+document.getElementById("btn-pin-entrar").onclick = verificarPin;
+document.getElementById("btn-bloquear").onclick = ()=> bloquearPanel("");
+
+// Si ya había un PIN válido en esta pestaña, se revalida con el servidor sin pedirlo otra vez.
+(async function iniciarAcceso(){
+  pinInputs[0].focus();
+  if(!ADMIN_PIN) return;
+  mostrarMensajePin("Verificando sesión...", true);
+  try{
+    const data = await apiCall({accion:"validar_admin", pin: ADMIN_PIN});
+    if(data.ok){ desbloquearPanel(); return; }
+  }catch(e){}
+  ADMIN_PIN = null;
+  try{ sessionStorage.removeItem("rb_admin_pin"); }catch(e){}
+  mostrarMensajePin("");
+})();
 </script>
 </body>
 </html>
