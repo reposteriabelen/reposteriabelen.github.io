@@ -195,6 +195,15 @@
     flex:0 0 auto;font-family:inherit;font-size:.5em;
     color:var(--primary);opacity:.85;
   }
+  /* Contador de caracteres del nombre */
+  .char-counter{
+    display:flex;justify-content:space-between;gap:10px;
+    margin-top:6px;font-size:.75rem;color:var(--muted);
+    transition:color .2s ease;
+  }
+  .char-counter .cc-count{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .char-counter.ok{color:#3f9142;}
+  .char-counter.warn{color:#c0392b;}
   .qr-box{text-align:center;margin-top:18px;}
   .qr-box img{border-radius:12px;border:1px solid var(--border);padding:10px;background:#fff;animation:popIn .4s ease;}
   .qr-id{font-family:monospace;font-size:.85rem;color:var(--muted);margin-top:8px;word-break:break-all;}
@@ -567,7 +576,7 @@ function actualizarSellosDom(cliente){
 function renderAuth(){
   return `
     <h1 class="brand-logo"><img src="assets/img/RB-Logo.png" alt="Repostería Belén" class="logo-img" onerror="this.style.display='none';"></h1>
-    <div class="subtitle tagline"><span class="tagline-texto">Junta sellos y canjéalo por <br> una <span class="tagline-sorpresa">sorpresa</span></span> <span class="tagline-regalo"><img src="assets/img/rol.png" alt="" style="width: 10%;"></span></div>
+    <div class="subtitle tagline"><span class="tagline-texto">Junta sellos y canjéalo por una <span class="tagline-sorpresa">sorpresa</span></span> <span class="tagline-regalo">🎁</span></div>
     <div class="tabs">
       <div class="tab ${state.screen==='login'?'active':''}" data-tab="login">Iniciar sesión</div>
       <div class="tab ${state.screen==='registro'?'active':''}" data-tab="registro">Registrarme</div>
@@ -592,7 +601,11 @@ function renderAuth(){
     <div class="screen ${state.screen==='registro'?'active':''}" id="screen-registro">
       <div class="card">
         <label>Nombre</label>
-        <input type="text" id="reg-nombre" placeholder="Tu nombre" maxlength="50">
+        <input type="text" id="reg-nombre" placeholder="Tu nombre" maxlength="50" autocomplete="name">
+        <div class="char-counter" id="reg-nombre-counter" aria-live="polite">
+          <span class="cc-hint">Mínimo 5 caracteres</span>
+          <span class="cc-count">0/50</span>
+        </div>
         <label>Número de teléfono</label>
         <input type="tel" id="reg-tel" inputmode="numeric" pattern="[0-9]*" maxlength="10" autocomplete="off" placeholder="10 dígitos">
         <label>Pin (4 dígitos)</label>
@@ -618,6 +631,35 @@ function formatNombre(nombre){
     return n.toLowerCase().replace(/(^|\s)(\S)/g, (m, sp, ch) => sp + ch.toUpperCase());
   }
   return n;
+}
+
+// ---- Nombre: mínimo 5 y máximo 50 caracteres, con contador en vivo ----
+const NOMBRE_MIN = 5;
+const NOMBRE_MAX = 50;
+
+function actualizarContadorNombre(){
+  const input = document.getElementById("reg-nombre");
+  const cont = document.getElementById("reg-nombre-counter");
+  if(!input || !cont) return;
+  const largo = input.value.length;
+  const utiles = input.value.trim().length; // lo que realmente se enviará
+  const hint = cont.querySelector(".cc-hint");
+  const count = cont.querySelector(".cc-count");
+  count.textContent = `${largo}/${NOMBRE_MAX}`;
+  cont.classList.remove("ok", "warn");
+  if(largo === 0){
+    hint.textContent = `Mínimo ${NOMBRE_MIN} caracteres`;
+  } else if(utiles < NOMBRE_MIN){
+    const faltan = NOMBRE_MIN - utiles;
+    hint.textContent = `Faltan ${faltan} ${faltan === 1 ? "caracter" : "caracteres"}`;
+    cont.classList.add("warn");
+  } else if(largo >= NOMBRE_MAX){
+    hint.textContent = "Límite máximo alcanzado";
+    cont.classList.add("warn");
+  } else {
+    hint.textContent = "✓ Nombre válido";
+    cont.classList.add("ok");
+  }
 }
 
 function renderLoggedIn(cliente){
@@ -747,6 +789,12 @@ function attachHandlers(){
     };
   }
 
+  const inputNombre = document.getElementById("reg-nombre");
+  if(inputNombre){
+    inputNombre.oninput = actualizarContadorNombre;
+    actualizarContadorNombre();
+  }
+
   const btnReg = document.getElementById("btn-registro");
   if(btnReg){
     btnReg.onclick = async ()=>{
@@ -756,6 +804,14 @@ function attachHandlers(){
       const err = document.getElementById("reg-error");
       if(!nombre || !telefono || !password){
         err.textContent = "Completa todos los campos.";
+        return;
+      }
+      if(nombre.length < NOMBRE_MIN){
+        err.textContent = `El nombre debe tener al menos ${NOMBRE_MIN} caracteres.`;
+        return;
+      }
+      if(nombre.length > NOMBRE_MAX){
+        err.textContent = `El nombre no puede tener más de ${NOMBRE_MAX} caracteres.`;
         return;
       }
       if(telefono.length !== 10){
