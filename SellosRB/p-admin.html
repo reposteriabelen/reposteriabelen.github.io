@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Repostería Belén - Panel Admin</title>
+<link rel="icon" type="image/png" href="assets/img/rol.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --bg:#fff3f6;
+    --card:#ffffff;
+    --primary:#e88aa5;
+    --primary-dark:#d9678a;
+    --accent:#ffc2d1;
+    --text:#5c3346;
+    --muted:#b48c9d;
+    --border:#fbdde7;
+    --ok:#3f9142;
+    --err:#c0392b;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{-webkit-tap-highlight-color:transparent}
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#2b1621; --card:#391f2d; --text:#fbe3ec; --muted:#caa0b3; --border:#5a2f45;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#2b1621; --card:#391f2d; --text:#fbe3ec; --muted:#caa0b3; --border:#5a2f45;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);color:var(--text);
+    display:flex;flex-direction:column;align-items:center;min-height:100%;
+    padding:20px 16px 40px;
+  }
+  .app{width:100%;max-width:440px;}
+  h1{font-size:1.3rem;text-align:center;margin:8px 0 2px;color:var(--primary-dark);}
+  .brand-icon{height:1.5em;width:auto;vertical-align:-0.3em;margin-right:6px;border-radius:8px;}
+  .logo-wrap{
+    width:100%;max-width:230px;margin:0 auto;
+    aspect-ratio:2.6/1;position:relative;overflow:hidden;
+  }
+  .logo-wrap img{
+    position:absolute;top:50%;left:0;width:100%;height:auto;
+    transform:translateY(-50%);
+  }
+  .subtitle{text-align:center;color:var(--muted);font-size:.85rem;margin-bottom:18px;}
+  .card{background:var(--card);border-radius:18px;padding:20px;border:1px solid var(--border);box-shadow:0 4px 14px rgba(216,103,138,.08);margin-bottom:16px;}
+  #reader{width:100%;border-radius:14px;overflow:hidden;}
+  button{
+    width:100%;padding:13px;border:none;border-radius:12px;
+    background:var(--primary);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;
+    transition:transform .15s ease, background .2s ease;
+  }
+  button:active{transform:scale(.97);background:var(--primary-dark);}
+  button.secondary{background:transparent;color:var(--primary);border:1px solid var(--primary);margin-top:10px;}
+  label{display:block;font-size:.8rem;font-weight:600;color:var(--muted);margin:10px 0 6px;}
+  input{
+    width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);
+    font-size:1rem;background:var(--bg);color:var(--text);
+  }
+  .status{margin-top:14px;padding:14px;border-radius:12px;font-size:.9rem;display:none;animation:popIn .3s ease;}
+  .status.ok{background:rgba(63,145,66,.12);color:var(--ok);display:block;}
+  .status.err{background:rgba(192,57,43,.12);color:var(--err);display:block;}
+  .loading-overlay{
+    position:fixed;inset:0;background:rgba(36,26,19,.55);
+    display:none;align-items:center;justify-content:center;z-index:50;
+    padding:16px;
+  }
+  .loading-overlay.active{display:flex;}
+  .loading-box{
+    background:var(--card);border-radius:18px;padding:28px 30px;
+    text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25);
+    animation:popIn .25s ease;
+  }
+  .spinner{
+    width:44px;height:44px;border-radius:50%;
+    border:4px solid var(--border);border-top-color:var(--primary);
+    margin:0 auto 14px;
+    animation:spin .8s linear infinite;
+  }
+  .loading-box p{margin:0;font-weight:700;color:var(--text);font-size:1rem;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .confirm-box{max-width:320px;}
+  .confirm-box p{font-size:1rem;line-height:1.4;}
+  .confirm-actions{display:flex;gap:10px;margin-top:18px;}
+  .confirm-actions button{margin:0;}
+  .tiposello-actions{display:flex;flex-direction:column;gap:10px;margin-top:18px;}
+  .tiposello-actions button{margin:0;}
+  .ajustar-subtitulo{margin:2px 0 0;font-size:.8rem;color:var(--muted);font-weight:400;}
+  .ajustar-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px;}
+  .btn-delta{
+    margin:0;padding:14px 8px;border-radius:12px;border:1px solid var(--primary);
+    background:transparent;color:var(--primary-dark);font-weight:700;font-size:.85rem;
+  }
+  .btn-delta:active{background:var(--primary);color:#fff;}
+  .btn-delta-quitar{border-style:dashed;color:var(--err);border-color:var(--err);}
+  .btn-delta-quitar:active{background:var(--err);color:#fff;}
+  .cliente-info{text-align:center;margin-top:6px;}
+  .cliente-info .nombre{font-size:1.15rem;font-weight:700;}
+  .cliente-info .sellos{font-size:2rem;font-weight:800;color:var(--primary);margin-top:4px;}
+  .toggle-mode{display:flex;background:var(--card);border-radius:14px;padding:4px;margin-bottom:16px;border:1px solid var(--border);}
+  .toggle-mode div{flex:1;text-align:center;padding:9px 4px;border-radius:10px;font-size:.82rem;font-weight:600;color:var(--muted);cursor:pointer;}
+  .toggle-mode div.active{background:var(--primary);color:#fff;}
+  .hidden{display:none;}
+  .clientes-search{margin-top:10px;}
+  .clientes-header{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .btn-refresh{width:auto;padding:7px 12px;font-size:.75rem;margin:0;}
+  .cliente-row{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-bottom:1px solid var(--border);}
+  .cliente-row:last-child{border-bottom:none;}
+  .cliente-row-top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .cliente-datos{flex:1;min-width:0;}
+  .cliente-datos .nombre-row{font-weight:700;font-size:.92rem;}
+  .cliente-datos .sub-row{font-size:.72rem;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cliente-row-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .badge-sellos{font-weight:800;color:var(--primary);font-size:1rem;}
+  .badge-sellos .badge-label{font-weight:500;color:var(--muted);font-size:.75rem;margin-left:4px;}
+  .btn-ajustar{
+    width:auto;padding:8px 16px;font-size:.78rem;font-weight:700;border-radius:10px;
+    background:transparent;color:var(--primary);border:1px solid var(--primary);
+  }
+  .btn-ajustar:active{background:var(--primary);color:#fff;}
+  .clientes-empty{text-align:center;color:var(--muted);font-size:.85rem;padding:22px 0;}
+  .btn-restaurar{
+    width:auto;padding:8px 14px;font-size:.78rem;font-weight:700;
+    background:var(--accent);color:var(--primary-dark);border-radius:10px;
+  }
+  .btn-restaurar:active{background:var(--primary);color:#fff;}
+  .cliente-row-completo{background:rgba(255,194,209,.25);border-radius:12px;margin:0 -6px;padding-left:6px;padding-right:6px;}
+  .btn-historial{
+    width:26px;height:26px;border-radius:50%;border:1px solid var(--border);
+    background:transparent;color:var(--muted);font-size:.85rem;padding:0;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;
+  }
+  .historial-list{max-height:280px;overflow-y:auto;text-align:left;margin-top:14px;}
+  .historial-item{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:.82rem;}
+  .historial-item:last-child{border-bottom:none;}
+  .historial-item .h-fecha{color:var(--muted);}
+  .historial-item .h-delta.positivo{color:var(--ok);font-weight:700;}
+  .historial-item .h-delta.negativo{color:var(--err);font-weight:700;}
+  @keyframes popIn{from{opacity:0;transform:scale(.9);}to{opacity:1;transform:scale(1);}}
+  .note{font-size:.72rem;color:var(--muted);text-align:center;margin-top:14px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="logo-wrap">
+    <img src="assets/img/RB-Logo.png" alt="Repostería Belén">
+  </div>
+  <div class="subtitle">Panel Admin — otorgar sellos</div>
+
+  <div class="toggle-mode">
+    <div id="mode-scan" class="active">Escanear QR</div>
+    <div id="mode-manual">Buscar por ID</div>
+    <div id="mode-clientes">Clientes</div>
+  </div>
+
+  <div id="section-scan" class="card">
+    <div id="reader"></div>
+    <button id="btn-start-scan" style="margin-top:14px;">Iniciar cámara</button>
+    <button id="btn-stop-scan" class="secondary hidden">Detener cámara</button>
+  </div>
+
+  <div id="section-manual" class="card hidden">
+    <label>ID del cliente</label>
+    <input type="text" id="manual-id" placeholder="CLI-XXXXX-1234">
+    <button id="btn-manual-sellar" style="margin-top:14px;">Sumar sello</button>
+  </div>
+
+  <div id="section-clientes" class="card hidden">
+    <div class="clientes-header">
+      <label style="margin:0;">Clientes registrados</label>
+      <button id="btn-refrescar-clientes" class="secondary btn-refresh">↻ Actualizar</button>
+    </div>
+    <input type="text" id="clientes-search" class="clientes-search" placeholder="Buscar por nombre, teléfono o ID/QR">
+    <div id="clientes-msg" class="status" style="display:none;margin-top:10px;"></div>
+    <div id="clientes-list" style="margin-top:6px;"></div>
+  </div>
+
+  <div class="card" id="result-card" style="display:none;">
+    <div class="cliente-info" id="cliente-info"></div>
+  </div>
+
+  <div class="note">Cada escaneo o búsqueda suma 1 sello al cliente. En "Clientes" puedes sumar o quitar sellos manualmente.</div>
+</div>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <p id="loading-text">Registrando sello...</p>
+  </div>
+</div>
+
+<div class="loading-overlay" id="confirm-overlay">
+  <div class="loading-box confirm-box">
+    <p id="confirm-text">¿Confirmar acción?</p>
+    <div class="confirm-actions">
+      <button id="btn-confirm-no" class="secondary">Cancelar</button>
+      <button id="btn-confirm-yes">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="loading-overlay" id="tiposello-overlay">
+  <div class="loading-box confirm-box">
+    <p id="tiposello-text">¿Qué quieres registrar?</p>
+    <div class="tiposello-actions">
+      <button id="btn-tiposello-completo">🍥 Sello completo (+1)</button>
+      <button id="btn-tiposello-medio" class="secondary">½ Medio sello (+0.5)</button>
+      <button id="btn-tiposello-cancelar" class="secondary">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="loading-overlay" id="ajustar-overlay">
+  <div class="loading-box confirm-box">
+    <p id="ajustar-titulo" style="margin-bottom:0;">Ajustar sellos</p>
+    <p id="ajustar-subtitulo" class="ajustar-subtitulo"></p>
+    <div class="ajustar-grid">
+      <button class="btn-delta" data-delta="1">➕ Sello completo</button>
+      <button class="btn-delta" data-delta="0.5">➕ Medio sello</button>
+      <button class="btn-delta btn-delta-quitar" data-delta="-0.5">➖ Medio sello</button>
+      <button class="btn-delta btn-delta-quitar" data-delta="-1">➖ Sello completo</button>
+    </div>
+    <div class="confirm-actions">
+      <button id="btn-ajustar-cerrar" class="secondary" style="width:100%;">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="loading-overlay" id="historial-overlay">
+  <div class="loading-box confirm-box">
+    <p id="historial-titulo" style="margin-bottom:0;">Historial</p>
+    <div class="historial-list" id="historial-list"></div>
+    <div class="confirm-actions">
+      <button id="btn-historial-cerrar" class="secondary" style="width:100%;">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbwPszTqEYXE6gdQqiFxe-be3t68txgsXmA6bM__Fw3hf-W6n1NL8cU09pUIEO3nECRr/exec";
+const META_SELLOS = 10;
+
+let html5QrCode = null;
+let scanning = false;
+let cooldown = false;
+
+async function apiCall(params){
+  const url = new URL(API_URL);
+  Object.keys(params).forEach(k => url.searchParams.append(k, params[k]));
+  const res = await fetch(url.toString());
+  return res.json();
+}
+
+// Un cliente puede acumular medios sellos (ej. 3.5). Estos helpers dan un
+// formato consistente en toda la pantalla: "3½" en vez de "3.5".
+function formatSellos(n){
+  const num = Number(n) || 0;
+  return Number.isInteger(num) ? String(num) : num.toFixed(1);
+}
+function formatCantidadSellos(delta){
+  const abs = Math.abs(Number(delta) || 0);
+  if(abs === 0.5) return "medio sello";
+  if(abs === 1) return "1 sello";
+  return `${abs} sellos`;
+}
+
+function mostrarCarga(texto){
+  document.getElementById("loading-text").textContent = texto;
+  document.getElementById("loading-overlay").classList.add("active");
+}
+function ocultarCarga(){
+  document.getElementById("loading-overlay").classList.remove("active");
+}
+
+// Muestra un modal de confirmación y resuelve true/false según lo que elija el usuario.
+function pedirConfirmacion(mensaje){
+  return new Promise(resolve=>{
+    document.getElementById("confirm-text").textContent = mensaje;
+    const overlay = document.getElementById("confirm-overlay");
+    overlay.classList.add("active");
+    const btnSi = document.getElementById("btn-confirm-yes");
+    const btnNo = document.getElementById("btn-confirm-no");
+    const cerrar = (resultado)=>{
+      overlay.classList.remove("active");
+      btnSi.onclick = null;
+      btnNo.onclick = null;
+      resolve(resultado);
+    };
+    btnSi.onclick = ()=> cerrar(true);
+    btnNo.onclick = ()=> cerrar(false);
+  });
+}
+
+// Pregunta si el sello a registrar es completo (1) o medio (0.5).
+// Resuelve 1, 0.5, o null si se cancela.
+function pedirTipoSello(mensaje){
+  return new Promise(resolve=>{
+    document.getElementById("tiposello-text").textContent = mensaje;
+    const overlay = document.getElementById("tiposello-overlay");
+    overlay.classList.add("active");
+    const btnCompleto = document.getElementById("btn-tiposello-completo");
+    const btnMedio = document.getElementById("btn-tiposello-medio");
+    const btnCancelar = document.getElementById("btn-tiposello-cancelar");
+    const cerrar = (resultado)=>{
+      overlay.classList.remove("active");
+      btnCompleto.onclick = null;
+      btnMedio.onclick = null;
+      btnCancelar.onclick = null;
+      resolve(resultado);
+    };
+    btnCompleto.onclick = ()=> cerrar(1);
+    btnMedio.onclick = ()=> cerrar(0.5);
+    btnCancelar.onclick = ()=> cerrar(null);
+  });
+}
+
+function mostrarStatus(msg, tipo){
+  const card = document.getElementById("result-card");
+  const info = document.getElementById("cliente-info");
+  card.style.display = "block";
+  info.innerHTML = `<div class="status ${tipo}">${msg}</div>`;
+  if(tipo === "err"){
+    info.innerHTML += `<button id="btn-reintentar" style="margin-top:10px;">Reintentar</button>`;
+    const btnReintentar = document.getElementById("btn-reintentar");
+    if(btnReintentar){
+      btnReintentar.onclick = ()=>{
+        card.style.display = "none";
+        startScanner();
+      };
+    }
+  }
+}
+
+function mostrarCliente(cliente){
+  const card = document.getElementById("result-card");
+  const info = document.getElementById("cliente-info");
+  card.style.display = "block";
+  const completo = cliente.sellos >= META_SELLOS;
+  info.innerHTML = `
+    <div class="status ok">✅ Sello registrado correctamente</div>
+    <div class="nombre">${cliente.nombre}</div>
+    <div class="sellos">${formatSellos(cliente.sellos)} sellos</div>
+    ${completo ? `<button id="btn-restaurar-resultado" class="btn-restaurar" style="margin-top:14px;">🎁 Restaurar tarjeta (premio canjeado)</button>` : ""}
+    <button id="btn-escanear-otro" style="margin-top:10px;">Escanear otro QR</button>
+  `;
+  const btnOtro = document.getElementById("btn-escanear-otro");
+  if(btnOtro){
+    btnOtro.onclick = ()=>{
+      card.style.display = "none";
+      startScanner();
+    };
+  }
+  const btnRestaurar = document.getElementById("btn-restaurar-resultado");
+  if(btnRestaurar){
+    btnRestaurar.onclick = async ()=>{
+      const ok = await restaurarTarjeta(cliente.id, cliente.nombre);
+      if(ok){
+        card.style.display = "none";
+        startScanner();
+      }
+    };
+  }
+}
+
+// Pone en 0 los sellos de un cliente (canje de premio al completar la tarjeta).
+// Pide confirmación, muestra "Actualizando sellos..." y devuelve true/false
+// según si se logró restaurar.
+async function restaurarTarjeta(id, nombre){
+  const confirmado = await pedirConfirmacion(`¿Restaurar la tarjeta de ${nombre}? Sus sellos volverán a 0 (premio ya canjeado).`);
+  if(!confirmado) return false;
+
+  mostrarCarga("Actualizando sellos...");
+  try{
+    const data = await apiCall({accion:"reiniciar", id});
+    ocultarCarga();
+    if(data.ok && data.cliente){
+      const idx = listaClientes ? listaClientes.findIndex(c => c.id === id) : -1;
+      if(idx > -1) listaClientes[idx].sellos = data.cliente.sellos;
+      return true;
+    } else {
+      mostrarStatus("❌ " + (data.error || "No se pudo restaurar la tarjeta."), "err");
+      return false;
+    }
+  }catch(e){
+    ocultarCarga();
+    mostrarStatus("❌ Error de conexión.", "err");
+    return false;
+  }
+}
+
+async function sellarCliente(id, delta){
+  if(cooldown) return;
+  cooldown = true;
+  mostrarCarga("Registrando sello...");
+  try{
+    const data = await apiCall({accion:"sellar", id, delta});
+    ocultarCarga();
+    if(data.ok){
+      mostrarCliente(data.cliente);
+    } else {
+      mostrarStatus("❌ " + (data.error || "Cliente no encontrado"), "err");
+    }
+  }catch(e){
+    ocultarCarga();
+    mostrarStatus("❌ Error de conexión", "err");
+  }
+  setTimeout(()=>{ cooldown = false; }, 2500);
+}
+
+async function onScanSuccess(decodedText){
+  if(cooldown) return;
+  stopScanner();
+  const id = decodedText.trim();
+  const delta = await pedirTipoSello("¿Registrar sello completo o medio sello?");
+  if(delta === null){
+    startScanner();
+    return;
+  }
+  sellarCliente(id, delta);
+}
+
+function startScanner(){
+  html5QrCode = new Html5Qrcode("reader");
+  html5QrCode.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 220 },
+    onScanSuccess,
+    ()=>{} // ignorar errores de frame sin QR
+  ).then(()=>{
+    scanning = true;
+    document.getElementById("btn-start-scan").classList.add("hidden");
+    document.getElementById("btn-stop-scan").classList.remove("hidden");
+  }).catch(err=>{
+    mostrarStatus("❌ No se pudo acceder a la cámara: " + err, "err");
+  });
+}
+
+function stopScanner(){
+  if(html5QrCode && scanning){
+    html5QrCode.stop().then(()=>{
+      scanning = false;
+      document.getElementById("btn-start-scan").classList.remove("hidden");
+      document.getElementById("btn-stop-scan").classList.add("hidden");
+    });
+  }
+}
+
+document.getElementById("btn-start-scan").onclick = startScanner;
+document.getElementById("btn-stop-scan").onclick = stopScanner;
+
+document.getElementById("btn-manual-sellar").onclick = async ()=>{
+  const id = document.getElementById("manual-id").value.trim();
+  if(!id){
+    mostrarStatus("Escribe un ID de cliente.", "err");
+    return;
+  }
+  const delta = await pedirTipoSello("¿Registrar sello completo o medio sello?");
+  if(delta === null) return;
+  sellarCliente(id, delta);
+};
+
+const MODOS = ["scan", "manual", "clientes"];
+function setModo(activo){
+  MODOS.forEach(m=>{
+    document.getElementById(`mode-${m}`).classList.toggle("active", m === activo);
+    document.getElementById(`section-${m}`).classList.toggle("hidden", m !== activo);
+  });
+  document.getElementById("result-card").style.display = "none";
+  stopScanner();
+  if(activo === "clientes") cargarClientes(false);
+}
+document.getElementById("mode-scan").onclick = ()=> setModo("scan");
+document.getElementById("mode-manual").onclick = ()=> setModo("manual");
+document.getElementById("mode-clientes").onclick = ()=> setModo("clientes");
+
+// ---- Clientes: listar, buscar, sumar/quitar sellos ----
+let listaClientes = null; // null = aún no cargada
+let mensajeClientesTimeout = null;
+
+function normalizar(str){
+  return (str || "").toString().toLowerCase();
+}
+
+function mostrarMensajeClientes(msg, tipo){
+  const el = document.getElementById("clientes-msg");
+  if(!el) return;
+  el.textContent = msg;
+  el.className = "status " + tipo;
+  el.style.display = "block";
+  clearTimeout(mensajeClientesTimeout);
+  mensajeClientesTimeout = setTimeout(()=>{ el.style.display = "none"; }, 2500);
+}
+
+async function cargarClientes(forzar){
+  if(listaClientes !== null && !forzar){
+    renderClientesList(document.getElementById("clientes-search").value.trim());
+    return;
+  }
+  listaClientes = null;
+  renderClientesList("");
+  try{
+    const data = await apiCall({accion:"clientes"});
+    listaClientes = (data.ok && Array.isArray(data.clientes)) ? data.clientes : [];
+    if(!data.ok) mostrarMensajeClientes("❌ " + (data.error || "No se pudo cargar la lista."), "err");
+  }catch(e){
+    listaClientes = [];
+    mostrarMensajeClientes("❌ Error de conexión.", "err");
+  }
+  renderClientesList(document.getElementById("clientes-search").value.trim());
+}
+
+function renderClientesList(filtro){
+  const cont = document.getElementById("clientes-list");
+  if(!cont) return;
+
+  if(listaClientes === null){
+    cont.innerHTML = `<div class="clientes-empty">Cargando clientes...</div>`;
+    return;
+  }
+
+  const f = normalizar(filtro);
+  const filtrados = !f ? listaClientes : listaClientes.filter(c =>
+    normalizar(c.nombre).includes(f) ||
+    normalizar(c.telefono).includes(f) ||
+    normalizar(c.id).includes(f)
+  );
+
+  if(!filtrados.length){
+    cont.innerHTML = `<div class="clientes-empty">${listaClientes.length ? "Sin resultados." : "No hay clientes registrados."}</div>`;
+    return;
+  }
+
+  cont.innerHTML = filtrados.map(c => {
+    const completo = c.sellos >= META_SELLOS;
+    return `
+    <div class="cliente-row ${completo ? "cliente-row-completo" : ""}" data-id="${c.id}">
+      <div class="cliente-row-top">
+        <div class="cliente-datos">
+          <div class="nombre-row">${c.nombre}${completo ? " 🎉" : ""}</div>
+          <div class="sub-row">${c.telefono ? c.telefono + " · " : ""}${c.id}</div>
+        </div>
+        <button class="btn-historial" data-id="${c.id}" title="Ver historial de fechas">🕒</button>
+      </div>
+      <div class="cliente-row-bottom">
+        ${completo
+          ? `<span class="badge-sellos" id="badge-${c.id}">${formatSellos(c.sellos)}<span class="badge-label">sellos</span></span>
+             <button class="btn-restaurar" data-id="${c.id}">🎁 Restaurar tarjeta</button>`
+          : `<span class="badge-sellos" id="badge-${c.id}">${formatSellos(c.sellos)}<span class="badge-label">sellos</span></span>
+             <button class="btn-ajustar" data-id="${c.id}">✏️ Ajustar</button>`}
+      </div>
+    </div>
+  `;
+  }).join("");
+
+  cont.querySelectorAll(".btn-ajustar").forEach(btn=>{
+    btn.onclick = ()=> abrirAjustarSellos(btn.dataset.id);
+  });
+  cont.querySelectorAll(".btn-restaurar").forEach(btn=>{
+    btn.onclick = async ()=>{
+      const cliente = listaClientes.find(c => c.id === btn.dataset.id);
+      const ok = await restaurarTarjeta(btn.dataset.id, cliente ? cliente.nombre : "este cliente");
+      if(ok) renderClientesList(document.getElementById("clientes-search").value.trim());
+    };
+  });
+  cont.querySelectorAll(".btn-historial").forEach(btn=>{
+    btn.onclick = ()=> mostrarHistorial(btn.dataset.id);
+  });
+}
+
+// Abre la ventana con las 4 opciones (sumar/quitar, completo/medio) para un cliente.
+let ajustarClienteId = null;
+
+function abrirAjustarSellos(id){
+  const cliente = listaClientes ? listaClientes.find(c => c.id === id) : null;
+  ajustarClienteId = id;
+  document.getElementById("ajustar-titulo").textContent = `Ajustar sellos de ${cliente ? cliente.nombre : "cliente"}`;
+  document.getElementById("ajustar-subtitulo").textContent = `Actualmente tiene ${formatSellos(cliente ? cliente.sellos : 0)} sellos`;
+  document.getElementById("ajustar-overlay").classList.add("active");
+}
+function cerrarAjustarSellos(){
+  document.getElementById("ajustar-overlay").classList.remove("active");
+  ajustarClienteId = null;
+}
+document.querySelectorAll("#ajustar-overlay .btn-delta").forEach(btn=>{
+  btn.onclick = ()=>{
+    const id = ajustarClienteId;
+    const delta = parseFloat(btn.dataset.delta);
+    cerrarAjustarSellos();
+    if(id) ajustarSello(id, delta);
+  };
+});
+document.getElementById("btn-ajustar-cerrar").onclick = cerrarAjustarSellos;
+
+async function ajustarSello(id, delta){
+  const fila = document.querySelector(`.cliente-row[data-id="${CSS.escape(id)}"]`);
+  const botones = fila ? fila.querySelectorAll(".btn-ajustar, .btn-restaurar") : [];
+  botones.forEach(b => b.disabled = true);
+  mostrarCarga("Actualizando sellos...");
+  try{
+    const data = await apiCall({accion:"sellar", id, delta});
+    ocultarCarga();
+    if(data.ok && data.cliente){
+      const idx = listaClientes.findIndex(c => c.id === id);
+      if(idx > -1) listaClientes[idx].sellos = data.cliente.sellos;
+      renderClientesList(document.getElementById("clientes-search").value.trim());
+    } else {
+      mostrarMensajeClientes("❌ " + (data.error || "No se pudo actualizar el sello."), "err");
+      botones.forEach(b => b.disabled = false);
+    }
+  }catch(e){
+    ocultarCarga();
+    mostrarMensajeClientes("❌ Error de conexión.", "err");
+    botones.forEach(b => b.disabled = false);
+  }
+}
+
+document.getElementById("clientes-search").oninput = (e)=> renderClientesList(e.target.value);
+document.getElementById("btn-refrescar-clientes").onclick = ()=> cargarClientes(true);
+
+// Muestra la fecha exacta de cada sello sumado/quitado y cada canje de un cliente.
+async function mostrarHistorial(id){
+  const cliente = listaClientes ? listaClientes.find(c => c.id === id) : null;
+  document.getElementById("historial-titulo").textContent = `Historial de ${cliente ? cliente.nombre : "cliente"}`;
+  const lista = document.getElementById("historial-list");
+  lista.innerHTML = `<div class="clientes-empty">Cargando...</div>`;
+  document.getElementById("historial-overlay").classList.add("active");
+
+  try{
+    const data = await apiCall({accion:"historial", id});
+    if(!data.ok || !Array.isArray(data.historial) || !data.historial.length){
+      lista.innerHTML = `<div class="clientes-empty">Aún no hay movimientos registrados.</div>`;
+      return;
+    }
+    lista.innerHTML = data.historial.map(h=>{
+      const fecha = new Date(h.fecha);
+      const fechaTexto = isNaN(fecha) ? h.fecha : fecha.toLocaleString("es-MX", {dateStyle:"medium", timeStyle:"short"});
+      const esCanje = h.tipo === "canje";
+      const signo = h.delta > 0 ? "+" : "−";
+      return `
+        <div class="historial-item">
+          <span class="h-fecha">${fechaTexto}</span>
+          <span class="h-delta ${h.delta >= 0 ? "positivo" : "negativo"}">
+            ${esCanje ? "🎁 Canje" : `${signo}${formatCantidadSellos(h.delta)}`}
+          </span>
+        </div>
+      `;
+    }).join("");
+  }catch(e){
+    lista.innerHTML = `<div class="clientes-empty">Error de conexión.</div>`;
+  }
+}
+document.getElementById("btn-historial-cerrar").onclick = ()=>{
+  document.getElementById("historial-overlay").classList.remove("active");
+};
+</script>
+</body>
+</html>
